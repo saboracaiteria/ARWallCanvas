@@ -61,7 +61,6 @@ dependencies {
     implementation("io.github.sceneview:sceneview:2.0.1")
 
     // Google VR (Cardboard)
-    implementation("com.google.vr:sdk-base:1.200.1")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
