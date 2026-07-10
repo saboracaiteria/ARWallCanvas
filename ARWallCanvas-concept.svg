@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="50%" style="stop-color:#16213e"/>
+      <stop offset="100%" style="stop-color:#0f3460"/>
+    </linearGradient>
+    <linearGradient id="wallGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b7355"/>
+      <stop offset="50%" style="stop-color:#a0896a"/>
+      <stop offset="100%" style="stop-color:#7a6548"/>
+    </linearGradient>
+    <linearGradient id="spray1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e74c3c;stop-opacity:0.8"/>
+      <stop offset="100%" style="stop-color:#c0392b;stop-opacity:0.4"/>
+    </linearGradient>
+    <linearGradient id="spray2" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#2ecc71;stop-opacity:0.6"/>
+      <stop offset="100%" style="stop-color:#27ae60;stop-opacity:0.2"/>
+    </linearGradient>
+    <linearGradient id="spray3" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3498db;stop-opacity:0.7"/>
+      <stop offset="100%" style="stop-color:#2980b9;stop-opacity:0.3"/>
+    </linearGradient>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" result="noise"/>
+      <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise"/>
+      <feBlend in="SourceGraphic" in2="grayNoise" mode="multiply" result="grainy"/>
+    </filter>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <pattern id="brick" patternUnits="userSpaceOnUse" width="80" height="40">
+      <rect width="80" height="40" fill="none" stroke="#5a4a3a" stroke-width="0.5" stroke-opacity="0.3"/>
+      <line x1="40" y1="0" x2="40" y2="20" stroke="#5a4a3a" stroke-width="0.5" stroke-opacity="0.3"/>
+      <line x1="0" y1="20" x2="80" y2="20" stroke="#5a4a3a" stroke-width="0.5" stroke-opacity="0.3"/>
+      <line x1="0" y1="20" x2="0" y2="40" stroke="#5a4a3a" stroke-width="0.5" stroke-opacity="0.3"/>
+      <line x1="80" y1="20" x2="80" y2="40" stroke="#5a4a3a" stroke-width="0.5" stroke-opacity="0.3"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="1000" fill="url(#bgGrad)"/>
+
+  <!-- Wall surface (perspective trapezoid) -->
+  <polygon points="50,300 750,300 700,900 100,900" fill="url(#wallGrad)" filter="url(#grain)"/>
+  <polygon points="50,300 750,300 700,900 100,900" fill="url(#brick)" opacity="0.4"/>
+
+  <!-- Grout lines for realism -->
+  <line x1="100" y1="400" x2="700" y2="400" stroke="#5a4a3a" stroke-width="0.5" opacity="0.3"/>
+  <line x1="150" y1="500" x2="650" y2="500" stroke="#5a4a3a" stroke-width="0.5" opacity="0.3"/>
+  <line x1="180" y1="600" x2="620" y2="600" stroke="#5a4a3a" stroke-width="0.5" opacity="0.3"/>
+  <line x1="130" y1="700" x2="670" y2="700" stroke="#5a4a3a" stroke-width="0.5" opacity="0.3"/>
+  <line x1="110" y1="800" x2="690" y2="800" stroke="#5a4a3a" stroke-width="0.5" opacity="0.3"/>
+
+  <!-- Augmented Graffiti content on wall -->
+
+  <!-- Main spray gesture - red trace -->
+  <path d="M 200,500 Q 280,420 350,480 T 480,430 T 550,550 T 620,480"
+        stroke="url(#spray1)" stroke-width="18" fill="none" stroke-linecap="round" filter="url(#glow)"/>
+
+  <!-- Secondary spray - green organic burst -->
+  <ellipse cx="380" cy="580" rx="80" ry="60" fill="url(#spray2)" filter="url(#glow)"/>
+  <ellipse cx="400" cy="590" rx="40" ry="30" fill="#2ecc71" opacity="0.4"/>
+
+  <!-- Blue accent lines (perspective guides) -->
+  <path d="M 150,350 L 400,650" stroke="url(#spray3)" stroke-width="6" stroke-dasharray="12,8" fill="none" opacity="0.7"/>
+  <path d="M 650,350 L 420,680" stroke="url(#spray3)" stroke-width="6" stroke-dasharray="12,8" fill="none" opacity="0.5"/>
+
+  <!-- Dotted scatter marks (digital spray dots) -->
+  <g fill="#e74c3c" opacity="0.6">
+    <circle cx="280" cy="490" r="3"/>
+    <circle cx="310" cy="470" r="2.5"/>
+    <circle cx="340" cy="500" r="4"/>
+    <circle cx="370" cy="460" r="2"/>
+    <circle cx="400" cy="510" r="3.5"/>
+    <circle cx="430" cy="480" r="2.5"/>
+    <circle cx="460" cy="520" r="3"/>
+    <circle cx="490" cy="470" r="2"/>
+    <circle cx="520" cy="530" r="4"/>
+  </g>
+
+  <g fill="#2ecc71" opacity="0.4">
+    <circle cx="350" cy="560" r="2"/>
+    <circle cx="380" cy="540" r="3"/>
+    <circle cx="410" cy="570" r="2.5"/>
+    <circle cx="440" cy="550" r="2"/>
+    <circle cx="350" cy="600" r="3"/>
+    <circle cx="410" cy="610" r="2"/>
+    <circle cx="380" cy="620" r="2.5"/>
+  </g>
+
+  <!-- Text accent - single word -->
+  <text x="260" y="650" font-family="monospace" font-size="14" fill="#ffffff" opacity="0.5" transform="rotate(-5,260,650)">AUGMENTED</text>
+  <text x="420" y="750" font-family="monospace" font-size="12" fill="#e74c3c" opacity="0.4" transform="rotate(3,420,750)">01::23</text>
+
+  <!-- Digital grid overlay (AR tracking reference) -->
+  <g stroke="#ffffff" stroke-width="0.3" opacity="0.08">
+    <line x1="100" y1="300" x2="100" y2="900"/>
+    <line x1="200" y1="300" x2="200" y2="900"/>
+    <line x1="300" y1="300" x2="300" y2="900"/>
+    <line x1="400" y1="300" x2="400" y2="900"/>
+    <line x1="500" y1="300" x2="500" y2="900"/>
+    <line x1="600" y1="300" x2="600" y2="900"/>
+    <line x1="700" y1="300" x2="700" y2="900"/>
+    <line x1="50" y1="400" x2="750" y2="400"/>
+    <line x1="50" y1="500" x2="750" y2="500"/>
+    <line x1="50" y1="600" x2="750" y2="600"/>
+    <line x1="50" y1="700" x2="750" y2="700"/>
+    <line x1="50" y1="800" x2="750" y2="800"/>
+  </g>
+
+  <!-- Depth scan lines (simulated LiDAR) -->
+  <g stroke="#00ffff" stroke-width="0.8" opacity="0.2">
+    <line x1="200" y1="380" x2="600" y2="380"/>
+    <line x1="250" y1="385" x2="550" y2="385"/>
+    <line x1="300" y1="390" x2="500" y2="390"/>
+  </g>
+
+  <!-- Corner markers (AR anchor points) -->
+  <g stroke="#00ff88" stroke-width="2" fill="none" opacity="0.6">
+    <rect x="100" y="300" width="20" height="20" rx="2"/>
+    <rect x="680" y="300" width="20" height="20" rx="2"/>
+    <rect x="100" y="880" width="20" height="20" rx="2"/>
+    <rect x="680" y="880" width="20" height="20" rx="2"/>
+  </g>
+
+  <!-- Hand / controller silhouette -->
+  <g opacity="0.15">
+    <path d="M 680,450 Q 690,440 700,450 L 700,470 L 690,480 L 680,470 Z" fill="#ffffff"/>
+    <circle cx="690" cy="460" r="8" fill="none" stroke="#ffffff" stroke-width="1"/>
+  </g>
+
+  <!-- Title area -->
+  <text x="400" y="970" font-family="sans-serif" font-size="10" fill="#ffffff" opacity="0.3" text-anchor="middle" letter-spacing="4">AR WALL CANVAS • CONCEPT</text>
+  <line x1="250" y1="975" x2="550" y2="975" stroke="#ffffff" stroke-width="0.5" opacity="0.2"/>
+</svg>

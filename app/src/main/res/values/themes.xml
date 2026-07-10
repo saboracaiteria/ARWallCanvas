@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ARWallCanvas" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">#FF4444</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSecondary">#44FF44</item>
+        <item name="colorOnSecondary">#000000</item>
+        <item name="android:statusBarColor">#FF000000</item>
+        <item name="android:navigationBarColor">#FF000000</item>
+    </style>
+</resources>
