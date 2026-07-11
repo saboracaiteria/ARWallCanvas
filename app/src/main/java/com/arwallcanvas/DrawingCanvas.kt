@@ -31,14 +31,14 @@ class DrawingCanvas(private val session: Session) {
 
     // Cores para alternar
     private val colorPalette = listOf(
-        0xFFFF4444, // Vermelho
-        0xFF44FF44, // Verde
-        0xFF4444FF, // Azul
-        0xFFFFFF44, // Amarelo
-        0xFFFF44FF, // Rosa
-        0xFF44FFFF, // Ciano
-        0xFFFFFFFF, // Branco
-        0xFFFF8800  // Laranja
+        0xFFFF4444.toInt(), // Vermelho
+        0xFF44FF44.toInt(), // Verde
+        0xFF4444FF.toInt(), // Azul
+        0xFFFFFF44.toInt(), // Amarelo
+        0xFFFF44FF.toInt(), // Rosa
+        0xFF44FFFF.toInt(), // Ciano
+        0xFFFFFFFF.toInt(), // Branco
+        0xFFFF8800.toInt()  // Laranja
     )
     private var colorIndex = 0
 
