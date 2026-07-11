@@ -1,14 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
-
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-feature android:name="android.hardware.camera" android:required="true" />
-
     <application
         android:name=".ARWallCanvasApp"
         android:allowBackup="true"
@@ -18,7 +14,6 @@
         android:theme="@style/Theme.ARWallCanvas"
         android:hardwareAccelerated="true"
         tools:targetApi="34">
-
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -32,5 +27,4 @@
             </intent-filter>
         </activity>
     </application>
-
 </manifest>
