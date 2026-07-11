@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ARWallCanvas</string>
+    <string name="spray">Spray</string>
+    <string name="brush">Pincel</string>
+    <string name="marker">Marcador</string>
+    <string name="eraser">Borracha</string>
+    <string name="undo">Desfazer</string>
+    <string name="redo">Refazer</string>
+    <string name="color">Cor</string>
+    <string name="clear">Limpar</string>
+    <string name="save">Salvar</string>
+    <string name="size_label">Tamanho</string>
+    <string name="opacity_label">Opacidade</string>
+</resources>

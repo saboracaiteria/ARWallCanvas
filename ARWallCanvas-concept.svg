@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="50%" style="stop-color:#16213e"/>
+      <stop offset="100%" style="stop-color:#0f3460"/>
+    </linearGradient>
+    <linearGradient id="wallGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b7355"/>
+      <stop offset="50%" style="stop-color:#a0896a"/>
+      <stop offset="100%" style="stop-color:#7a6548"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#bgGrad)"/>
+  <polygon points="50,300 750,300 700,900 100,900" fill="url(#wallGrad)" opacity="0.8"/>
+  <polygon points="50,300 750,300 700,900 100,900" fill="url(#brick)" opacity="0.4"/>
+  <text x="400" y="970" font-family="sans-serif" font-size="10" fill="#ffffff" opacity="0.3" text-anchor="middle" letter-spacing="4">AR WALL CANVAS • CONCEPT</text>
+</svg>
