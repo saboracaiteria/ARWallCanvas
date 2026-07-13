@@ -22,14 +22,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "ARWallCanvas"
 include(":app")
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-
-rootProject.name = "ARWallCanvas"
-include(":app")
-
-rootProject.name = "ARWallCanvas"
-include(":app")

@@ -50,7 +50,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var drawingEngine: DrawingEngine
 
     // Câmera
-    private var imageCapture: ImageCapture? = null
+    private lateinit var imageCapture: ImageCapture
     private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 
     // Estado atual

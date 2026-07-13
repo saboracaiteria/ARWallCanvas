@@ -5,7 +5,7 @@ on:
     branches: [ "main", "master", "develop" ]
   pull_request:
     branches: [ "main", "master" ]
-  workflow_dispatch:  # Permite rodar manualmente
+  workflow_dispatch:
 
 jobs:
   build:
@@ -20,6 +20,9 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+
+      - name: 📱 Configurar Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: 🏗️ Configurar Gradle
         uses: gradle/actions/setup-gradle@v3
@@ -47,6 +50,9 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+
+      - name: 📱 Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: 🏗️ Gradle
         uses: gradle/actions/setup-gradle@v3
