@@ -2,8 +2,6 @@ package com.arwallcanvas
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.Color
 import android.os.Bundle
 import android.os.Environment
 import android.widget.ImageButton
@@ -43,9 +41,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        previewView = findViewById(R.id.previewView)
-        drawingOverlay = findViewById(R.id.drawingOverlay)
-        colorPicker = findViewById(R.id.colorPicker)
+        // IDs do layout usam snake_case! NÃO camelCase.
+        previewView = findViewById(R.id.preview_view)
+        drawingOverlay = findViewById(R.id.drawing_overlay)
+        colorPicker = findViewById(R.id.color_picker)
+
         drawingEngine = DrawingEngine()
         drawingOverlay.setDrawingEngine(drawingEngine)
 
@@ -53,41 +53,41 @@ class MainActivity : AppCompatActivity() {
             drawingEngine.setColor(color)
         }
 
-        findViewById<ImageButton>(R.id.btnBrush).setOnClickListener {
+        findViewById<ImageButton>(R.id.btn_brush).setOnClickListener {
             drawingEngine.setTool(DrawingEngine.BrushTool.BRUSH)
         }
-        findViewById<ImageButton>(R.id.btnSpray).setOnClickListener {
+        findViewById<ImageButton>(R.id.btn_spray).setOnClickListener {
             drawingEngine.setTool(DrawingEngine.BrushTool.SPRAY)
         }
-        findViewById<ImageButton>(R.id.btnMarker).setOnClickListener {
+        findViewById<ImageButton>(R.id.btn_marker).setOnClickListener {
             drawingEngine.setTool(DrawingEngine.BrushTool.MARKER)
         }
-        findViewById<ImageButton>(R.id.btnEraser).setOnClickListener {
+        findViewById<ImageButton>(R.id.btn_eraser).setOnClickListener {
             drawingEngine.setTool(DrawingEngine.BrushTool.ERASER)
         }
-        findViewById<ImageButton>(R.id.btnUndo).setOnClickListener {
+        findViewById<ImageButton>(R.id.btn_undo).setOnClickListener {
             drawingEngine.undo()
         }
-        findViewById<ImageButton>(R.id.btnRedo).setOnClickListener {
+        findViewById<ImageButton>(R.id.btn_redo).setOnClickListener {
             drawingEngine.redo()
         }
-        findViewById<ImageButton>(R.id.btnClear).setOnClickListener {
+        findViewById<ImageButton>(R.id.btn_clear).setOnClickListener {
             drawingEngine.clear()
         }
 
-        findViewById<SeekBar>(R.id.sizeSlider).setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+        findViewById<SeekBar>(R.id.size_slider).setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seek: SeekBar, v: Int, b: Boolean) { drawingEngine.setSize(v / 10f) }
             override fun onStartTrackingTouch(seek: SeekBar) {}
             override fun onStopTrackingTouch(seek: SeekBar) {}
         })
 
-        findViewById<SeekBar>(R.id.opacitySlider).setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+        findViewById<SeekBar>(R.id.opacity_slider).setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seek: SeekBar, v: Int, b: Boolean) { drawingEngine.setOpacity(v / 255f) }
             override fun onStartTrackingTouch(seek: SeekBar) {}
             override fun onStopTrackingTouch(seek: SeekBar) {}
         })
 
-        findViewById<ImageButton>(R.id.btnSave).setOnClickListener {
+        findViewById<ImageButton>(R.id.btn_save).setOnClickListener {
             saveDrawing()
         }
 
@@ -97,7 +97,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             startCamera()
         }
-
         cameraExecutor = Executors.newSingleThreadExecutor()
     }
 
