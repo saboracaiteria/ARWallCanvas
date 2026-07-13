@@ -2,107 +2,115 @@ package com.arwallcanvas
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Color
 import android.os.Bundle
-import android.view.MotionEvent
 import android.view.View
+import android.widget.ImageButton
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
+import androidx.camera.core.ImageCapture
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
-import com.arwallcanvas.databinding.ActivityMainBinding
-import com.google.ar.core.ArCoreApk
-import com.google.ar.core.Session
-import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException
+import com.arwallcanvas.drawing.BrushTool
+import com.arwallcanvas.drawing.DrawingEngine
+import com.arwallcanvas.ui.DrawingOverlayView
+import com.arwallcanvas.utils.ColorPicker
+import java.io.File
+import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
+/**
+ * MainActivity do ARWallCanvas.
+ *
+ * Abre a câmera, sobrepõe uma camada de desenho e fornece
+ * ferramentas de pintura (spray, pincel, marcador, borracha)
+ * com suporte a desfazer/refazer, paleta de cores e salvamento.
+ *
+ * Inspirado na filosofia Augmented Graffiti — cada traço importa.
+ */
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityMainBinding
-    private var arSession: Session? = null
-    private var depthHelper: DepthHelper? = null
-    private var drawingCanvas: DrawingCanvas? = null
+    // Componentes de UI
+    private lateinit var previewView: PreviewView
+    private lateinit var drawingOverlay: DrawingOverlayView
+    private lateinit var colorPicker: ColorPicker
+    private lateinit var toolbar: View
 
-    private val cameraExecutor = Executors.newSingleThreadExecutor()
+    // Motor de desenho
+    private lateinit var drawingEngine: DrawingEngine
 
-    // Permissão da câmera
+    // Câmera
+    private var imageCapture: ImageCapture? = null
+    private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+
+    // Estado atual
+    private var currentTool = BrushTool.SPRAY
+    private var currentColor = Color.RED
+    private var currentSize = 20f
+    private var currentOpacity = 0.8f
+
+    // Launcher de permissão
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
+    ) { isGranted ->
         if (isGranted) {
-            initializeAR()
+            startCamera()
         } else {
             Toast.makeText(this, "Permissão de câmera necessária", Toast.LENGTH_LONG).show()
-            finish()
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        setContentView(R.layout.activity_main)
 
-        checkCameraPermission()
+        // Inicializar views
+        initViews()
+
+        // Inicializar motor de desenho
+        drawingEngine = DrawingEngine(this)
+        drawingOverlay.setDrawingEngine(drawingEngine)
+
+        // Configurar câmera
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            startCamera()
+        } else {
+            requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+
+        // Configurar controles da UI
+        setupToolbar()
+        setupSliders()
+        setupColorPicker()
+
+        // Estado inicial
+        drawingEngine.setTool(currentTool)
+        drawingEngine.setColor(currentColor)
+        drawingEngine.setSize(currentSize)
+        drawingEngine.setOpacity(currentOpacity)
+        updateToolSelection()
     }
 
-    private fun checkCameraPermission() {
-        when {
-            ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
-                PackageManager.PERMISSION_GRANTED -> {
-                initializeAR()
-            }
-            shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) -> {
-                Toast.makeText(this, "Precisamos da câmera para AR", Toast.LENGTH_LONG).show()
-                requestPermissionLauncher.launch(Manifest.permission.CAMERA)
-            }
-            else -> {
-                requestPermissionLauncher.launch(Manifest.permission.CAMERA)
-            }
-        }
+    private fun initViews() {
+        previewView = findViewById(R.id.preview_view)
+        drawingOverlay = findViewById(R.id.drawing_overlay)
+        colorPicker = findViewById(R.id.color_picker)
+        toolbar = findViewById(R.id.tool_bar)
     }
 
-    private fun initializeAR() {
-        // Verificar disponibilidade do ARCore
-        val availability = ArCoreApk.getInstance().checkAvailability(this)
-        if (!availability.isSupported) {
-            Toast.makeText(this, "ARCore não suportado neste dispositivo", Toast.LENGTH_LONG).show()
-            finish()
-            return
-        }
-
-        try {
-            val installStatus = ArCoreApk.getInstance().requestInstall(this, true)
-            if (installStatus == ArCoreApk.InstallStatus.INSTALL_REQUESTED) {
-                // O usuário será direcionado para instalar o ARCore
-                return
-            }
-        } catch (e: UnavailableUserDeclinedInstallationException) {
-            Toast.makeText(this, "ARCore necessário. Instale e tente novamente.", Toast.LENGTH_LONG).show()
-            finish()
-            return
-        }
-
-        // Inicializar sessão AR
-        try {
-            arSession = Session(this)
-            arSession?.let { session ->
-                depthHelper = DepthHelper(session)
-                drawingCanvas = DrawingCanvas(session)
-            }
-        } catch (e: Exception) {
-            Toast.makeText(this, "Erro ao inicializar AR: ${e.message}", Toast.LENGTH_LONG).show()
-            finish()
-            return
-        }
-
-        startCamera()
-        setupUI()
-    }
+    // ==================== CÂMERA ====================
 
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
@@ -111,96 +119,144 @@ class MainActivity : AppCompatActivity() {
 
             val preview = Preview.Builder()
                 .build()
-                .also { it.setSurfaceProvider(binding.viewFinder.surfaceProvider) }
+                .also { it.setSurfaceProvider(previewView.surfaceProvider) }
 
-            val imageAnalysis = ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            imageCapture = ImageCapture.Builder()
+                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                 .build()
-                .also { analysis ->
-                    analysis.setAnalyzer(cameraExecutor) { imageProxy ->
-                        processCameraFrame(imageProxy)
-                    }
-                }
 
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
             try {
                 cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview, imageAnalysis
-                )
+                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
             } catch (e: Exception) {
-                e.printStackTrace()
+                Toast.makeText(this, "Erro na câmera: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun processCameraFrame(imageProxy: ImageProxy) {
-        // Enviar frame para o DepthHelper processar profundidade
-        depthHelper?.processFrame(imageProxy)
-        imageProxy.close()
+    // ==================== BARRA DE FERRAMENTAS ====================
+
+    private fun setupToolbar() {
+        findViewById<ImageButton>(R.id.btn_spray)?.setOnClickListener {
+            currentTool = BrushTool.SPRAY
+            drawingEngine.setTool(currentTool)
+            updateToolSelection()
+        }
+        findViewById<ImageButton>(R.id.btn_brush)?.setOnClickListener {
+            currentTool = BrushTool.BRUSH
+            drawingEngine.setTool(currentTool)
+            updateToolSelection()
+        }
+        findViewById<ImageButton>(R.id.btn_marker)?.setOnClickListener {
+            currentTool = BrushTool.MARKER
+            drawingEngine.setTool(currentTool)
+            updateToolSelection()
+        }
+        findViewById<ImageButton>(R.id.btn_eraser)?.setOnClickListener {
+            currentTool = BrushTool.ERASER
+            drawingEngine.setTool(currentTool)
+            updateToolSelection()
+        }
+
+        findViewById<ImageButton>(R.id.btn_undo)?.setOnClickListener {
+            drawingEngine.undo()
+            drawingOverlay.invalidate()
+        }
+        findViewById<ImageButton>(R.id.btn_redo)?.setOnClickListener {
+            drawingEngine.redo()
+            drawingOverlay.invalidate()
+        }
+        findViewById<ImageButton>(R.id.btn_clear)?.setOnClickListener {
+            drawingEngine.clear()
+            drawingOverlay.invalidate()
+            Toast.makeText(this, "Tela limpa", Toast.LENGTH_SHORT).show()
+        }
+        findViewById<ImageButton>(R.id.btn_color)?.setOnClickListener {
+            colorPicker.visibility = if (colorPicker.visibility == View.VISIBLE)
+                View.GONE else View.VISIBLE
+        }
+        findViewById<ImageButton>(R.id.btn_save)?.setOnClickListener {
+            salvarArte()
+        }
     }
 
-    private fun setupUI() {
-        // Configurar toque para desenhar
-        binding.touchOverlay.setOnTouchListener { _, event ->
-            drawingCanvas?.handleTouch(event)
-            // Retornar true para consumir o evento
-            true
+    private fun updateToolSelection() {
+        val map = mapOf(
+            R.id.btn_spray to BrushTool.SPRAY,
+            R.id.btn_brush to BrushTool.BRUSH,
+            R.id.btn_marker to BrushTool.MARKER,
+            R.id.btn_eraser to BrushTool.ERASER
+        )
+        map.forEach { (id, tool) ->
+            findViewById<ImageButton>(id)?.alpha = if (tool == currentTool) 1.0f else 0.4f
         }
+    }
 
-        // Botão para limpar desenho
-        binding.clearButton.setOnClickListener {
-            drawingCanvas?.clear()
-            Toast.makeText(this, "Desenho limpo", Toast.LENGTH_SHORT).show()
+    // ==================== PALETA DE CORES ====================
+
+    private fun setupColorPicker() {
+        colorPicker.setOnColorSelectedListener { color ->
+            currentColor = color
+            drawingEngine.setColor(color)
+            colorPicker.visibility = View.GONE
         }
+    }
 
-        // Botão para salvar
-        binding.saveButton.setOnClickListener {
-            saveCurrentDrawing()
-        }
+    // ==================== SLIDERS ====================
 
-        // Botão para alternar cor
-        binding.colorButton.setOnClickListener {
-            drawingCanvas?.changeColor()
-            Toast.makeText(this, "Cor alterada", Toast.LENGTH_SHORT).show()
-        }
-
-        // SeekBar de tamanho do pincel
-        binding.brushSizeSeekbar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                val width = 4f + (progress / 100f) * 36f // 4 a 40 pixels
-                drawingCanvas?.setWidth(width)
+    private fun setupSliders() {
+        findViewById<SeekBar>(R.id.size_slider)?.setOnSeekBarChangeListener(
+            object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seek: SeekBar, progress: Int, fromUser: Boolean) {
+                    currentSize = (progress + 5).toFloat()
+                    drawingEngine.setSize(currentSize)
+                }
+                override fun onStartTrackingTouch(seek: SeekBar) {}
+                override fun onStopTrackingTouch(seek: SeekBar) {}
             }
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-        })
+        )
 
-        // Botão VR
-        binding.vrModeToggle.setOnClickListener {
-            toggleVRMode()
-        }
-
-        // Botão desfazer (limpa último traço)
-        binding.undoButton.setOnClickListener {
-            drawingCanvas?.undo()
-            Toast.makeText(this, "Último traço removido", Toast.LENGTH_SHORT).show()
-        }
+        findViewById<SeekBar>(R.id.opacity_slider)?.setOnSeekBarChangeListener(
+            object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seek: SeekBar, progress: Int, fromUser: Boolean) {
+                    currentOpacity = progress / 100f
+                    drawingEngine.setOpacity(currentOpacity)
+                }
+                override fun onStartTrackingTouch(seek: SeekBar) {}
+                override fun onStopTrackingTouch(seek: SeekBar) {}
+            }
+        )
     }
 
-    private fun saveCurrentDrawing() {
-        // Salvar o desenho atual como imagem/textura
-        Toast.makeText(this, "Desenho salvo!", Toast.LENGTH_SHORT).show()
-    }
+    // ==================== SALVAR ====================
 
-    private fun toggleVRMode() {
-        // Alternar entre AR normal e split-screen VR
-        Toast.makeText(this, "Modo VR alternado", Toast.LENGTH_SHORT).show()
+    private fun salvarArte() {
+        val bitmap = drawingEngine.getBitmap()
+        if (bitmap == null || !drawingEngine.hasContent()) {
+            Toast.makeText(this, "Nada para salvar — desenhe algo primeiro!", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        try {
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+            val fileName = "ARWallCanvas_$timestamp.png"
+            val dir = getExternalFilesDir(null)
+            val file = File(dir, fileName)
+
+            FileOutputStream(file).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+
+            Toast.makeText(this, "Salvo como: $fileName", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Erro ao salvar: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
-        arSession?.close()
     }
 }

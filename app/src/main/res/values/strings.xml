@@ -1,10 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">AR Wall Canvas</string>
-    <string name="clear_button">Limpar</string>
-    <string name="save_button">Salvar</string>
-    <string name="vr_toggle">VR</string>
-    <string name="color_picker">Cor</string>
-    <string name="undo_button">Desfazer</string>
-    <string name="permission_camera_rationale">Precisamos da câmera para projetar desenhos em AR na parede.</string>
+    <string name="app_name">ARWallCanvas</string>
+    <string name="spray">Spray</string>
+    <string name="brush">Pincel</string>
+    <string name="marker">Marcador</string>
+    <string name="eraser">Borracha</string>
+    <string name="undo">Desfazer</string>
+    <string name="redo">Refazer</string>
+    <string name="color">Cor</string>
+    <string name="clear">Limpar</string>
+    <string name="save">Salvar</string>
+    <string name="size_label">Tamanho</string>
+    <string name="opacity_label">Opacidade</string>
+    <string name="permission_camera">Permissão de câmera necessária para ARWallCanvas</string>
+    <string name="saved_message">Arte salva!</string>
+    <string name="clear_message">Tela limpa</string>
 </resources>
