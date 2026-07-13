@@ -40,7 +40,7 @@
         android:orientation="horizontal"
         android:gravity="center"
         android:padding="8dp"
-        android:background="#CC1A1A2E"
+        android:background="@drawable/control_background"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -68,7 +68,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginBottom="8dp"
-        android:layout_marginHorizontal="48dp" />
+        android:layout_marginHorizontal="32dp" />
 
     <SeekBar
         android:id="@+id/opacity_slider"
@@ -80,5 +80,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginBottom="4dp"
-        android:layout_marginHorizontal="48dp" />
+        android:layout_marginHorizontal="32dp" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

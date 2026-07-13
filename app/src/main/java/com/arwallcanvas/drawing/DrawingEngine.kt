@@ -1,6 +1,8 @@
 package com.arwallcanvas.drawing
 
 import android.graphics.*
+import java.io.File
+import java.io.FileOutputStream
 
 enum class BrushTool {
     BRUSH, SPRAY, MARKER, ERASER
@@ -54,49 +56,57 @@ class DrawingEngine {
 
     fun addPoint(x: Float, y: Float) {
         if (!isDrawing) return
-        paint.color = if (currentTool == BrushTool.ERASER) Color.TRANSPARENT else currentColor
-        paint.alpha = (brushOpacity * 255).toInt()
-        paint.style = Paint.Style.STROKE
-        paint.strokeCap = Paint.Cap.ROUND
-        paint.strokeJoin = Paint.Join.ROUND
 
         when (currentTool) {
             BrushTool.SPRAY -> drawSpray(x, y)
-            BrushTool.MARKER -> {
-                paint.strokeWidth = brushSize
-                canvas.drawLine(lastX, lastY, x, y, paint)
-            }
-            BrushTool.ERASER -> {
-                paint.strokeWidth = brushSize * 2f
-                paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
-                canvas.drawLine(lastX, lastY, x, y, paint)
-                paint.xfermode = null
-            }
-            else -> { // BRUSH
-                paint.strokeWidth = brushSize
-                canvas.drawLine(lastX, lastY, x, y, paint)
-            }
+            BrushTool.MARKER -> drawLine(x, y)
+            BrushTool.ERASER -> drawEraser(x, y)
+            else -> drawLine(x, y) // BRUSH
         }
         lastX = x
         lastY = y
+    }
+
+    private fun drawLine(x: Float, y: Float) {
+        paint.color = currentColor
+        paint.alpha = (brushOpacity * 255).toInt()
+        paint.strokeWidth = brushSize
+        paint.style = Paint.Style.STROKE
+        paint.strokeCap = Paint.Cap.ROUND
+        paint.strokeJoin = Paint.Join.ROUND
+        paint.xfermode = null
+        canvas.drawLine(lastX, lastY, x, y, paint)
+    }
+
+    private fun drawEraser(x: Float, y: Float) {
+        paint.color = Color.TRANSPARENT
+        paint.strokeWidth = brushSize * 2f
+        paint.style = Paint.Style.STROKE
+        paint.strokeCap = Paint.Cap.ROUND
+        paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
+        canvas.drawLine(lastX, lastY, x, y, paint)
+        paint.xfermode = null
     }
 
     private fun drawSpray(x: Float, y: Float) {
         val density = 15
         paint.style = Paint.Style.FILL
         paint.strokeWidth = 0f
+        paint.color = currentColor
         val originalAlpha = paint.alpha
         for (i in 0 until density) {
             val offsetX = (Math.random() * brushSize * 0.8 - brushSize * 0.4).toFloat()
             val offsetY = (Math.random() * brushSize * 0.8 - brushSize * 0.4).toFloat()
-            paint.alpha = (originalAlpha * (0.3 + Math.random() * 0.7)).toInt()
+            paint.alpha = (originalAlpha * (0.3 + Math.random() * 0.7)).toInt().coerceIn(0, 255)
             canvas.drawPoint(lastX + offsetX, lastY + offsetY, paint)
         }
         paint.alpha = originalAlpha
         paint.style = Paint.Style.STROKE
     }
 
-    fun endStroke() { isDrawing = false }
+    fun endStroke() {
+        isDrawing = false
+    }
 
     fun render(c: Canvas) {
         bitmap?.let { c.drawBitmap(it, 0f, 0f, null) }
@@ -129,6 +139,18 @@ class DrawingEngine {
         bitmap?.let {
             saveState()
             it.eraseColor(Color.TRANSPARENT)
+        }
+    }
+
+    fun saveToFile(file: File): Boolean {
+        val bmp = bitmap ?: return false
+        return try {
+            FileOutputStream(file).use { out ->
+                bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+            true
+        } catch (e: Exception) {
+            false
         }
     }
 }
