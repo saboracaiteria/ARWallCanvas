@@ -24,6 +24,9 @@ jobs:
       - name: 📱 Configurar Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: 📦 Install platform 34
+        run: yes | sdkmanager "platforms;android-34" "build-tools;34.0.0" 2>&1 || true
+
       - name: 🏗️ Configurar Gradle
         uses: gradle/actions/setup-gradle@v3
 
@@ -53,6 +56,9 @@ jobs:
 
       - name: 📱 Android SDK
         uses: android-actions/setup-android@v3
+
+      - name: 📦 Install platform 34
+        run: yes | sdkmanager "platforms;android-34" "build-tools;34.0.0" 2>&1 || true
 
       - name: 🏗️ Gradle
         uses: gradle/actions/setup-gradle@v3
