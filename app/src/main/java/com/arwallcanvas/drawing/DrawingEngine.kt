@@ -1,131 +1,145 @@
 package com.arwallcanvas.drawing
 
+import android.content.Context
 import android.graphics.*
+import java.util.Stack
+import kotlin.math.sqrt
 
-class DrawingEngine {
+class DrawingEngine(private val context: Context) {
 
-    enum class BrushTool {
-        BRUSH, SPRAY, MARKER, ERASER
-    }
-
-    private var bitmap: Bitmap? = null
-    private val canvas = Canvas()
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private var currentTool = BrushTool.BRUSH
-    private var brushSize = 20f
-    private var brushOpacity = 1.0f
-    private var currentColor = Color.BLACK
-    private var lastX = 0f
-    private var lastY = 0f
+    private var drawingBitmap: Bitmap? = null
+    private var drawingCanvas: Canvas? = null
+    private val undoStack = Stack<Bitmap>()
+    private val redoStack = Stack<Bitmap>()
+    private var currentTool = BrushTool.SPRAY
+    private var currentColor = Color.RED
+    private var currentSize = 20f
+    private var currentOpacity = 1f
+    private var lastPoint: PointF? = null
+    private var lastTime = 0L
+    private var currentPath: Path? = null
+    private var currentPaint: Paint? = null
     private var isDrawing = false
+    var width: Int = 0; private set
+    var height: Int = 0; private set
 
-    private val undoStack = mutableListOf<Bitmap>()
-    private val redoStack = mutableListOf<Bitmap>()
-    private val maxHistory = 30
-
-    fun init(width: Int, height: Int) {
-        bitmap?.recycle()
-        bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        canvas.setBitmap(bitmap)
+    fun init(w: Int, h: Int) {
+        if (w <= 0 || h <= 0) return
+        if (w == width && h == height && drawingBitmap != null) return
+        width = w; height = h
+        val newBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val newCanvas = Canvas(newBitmap)
+        newCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+        if (drawingBitmap != null) newCanvas.drawBitmap(drawingBitmap!!, 0f, 0f, null)
+        drawingBitmap = newBitmap; drawingCanvas = newCanvas
+        undoStack.clear(); redoStack.clear()
     }
 
-    fun getBitmap(): Bitmap? = bitmap
-
-    fun hasContent(): Boolean {
-        bitmap?.let { bmp ->
-            val pixels = IntArray(bmp.width * bmp.height)
-            bmp.getPixels(pixels, 0, bmp.width, 0, 0, bmp.width, bmp.height)
-            return pixels.any { it != 0 }
-        }
-        return false
-    }
-
+    fun getBitmap(): Bitmap? = drawingBitmap
     fun setTool(tool: BrushTool) { currentTool = tool }
     fun setColor(color: Int) { currentColor = color }
-    fun setSize(size: Float) { brushSize = size.coerceIn(1f, 100f) }
-    fun setOpacity(opacity: Float) { brushOpacity = opacity.coerceIn(0f, 1f) }
+    fun setSize(size: Float) { currentSize = size.coerceIn(3f, 100f) }
+    fun setOpacity(opacity: Float) { currentOpacity = opacity.coerceIn(0f, 1f) }
 
     fun startStroke(x: Float, y: Float) {
-        saveState()
-        isDrawing = true
-        lastX = x
-        lastY = y
-    }
-
-    fun addPoint(x: Float, y: Float) {
-        if (!isDrawing) return
-        paint.color = if (currentTool == BrushTool.ERASER) Color.TRANSPARENT else currentColor
-        paint.alpha = (brushOpacity * 255).toInt()
-        paint.style = Paint.Style.STROKE
-        paint.strokeCap = Paint.Cap.ROUND
-        paint.strokeJoin = Paint.Join.ROUND
-
-        when (currentTool) {
-            BrushTool.SPRAY -> drawSpray(x, y)
-            BrushTool.MARKER -> drawMarker(x, y)
-            else -> drawBrush(x, y)
+        saveStateForUndo()
+        isDrawing = true; lastPoint = PointF(x, y); lastTime = System.currentTimeMillis()
+        currentPath = Path().apply { moveTo(x, y) }
+        currentPaint = Paint().apply {
+            color = currentColor; strokeWidth = currentSize; style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
+            isAntiAlias = true; isDither = true; alpha = (currentOpacity * 255).toInt()
         }
-        lastX = x
-        lastY = y
+        if (currentTool == BrushTool.ERASER) {
+            val ep = Paint(currentPaint!!).apply { strokeWidth = currentSize * 2f; xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR) }
+            drawingCanvas?.drawPoint(x, y, ep)
+        } else if (currentTool == BrushTool.SPRAY) {
+            drawSprayDot(x, y, currentSize, currentPaint!!)
+        } else {
+            drawingCanvas?.drawPoint(x, y, currentPaint!!)
+        }
     }
 
-    fun endStroke() {
-        isDrawing = false
-    }
-
-    private fun drawBrush(x: Float, y: Float) {
-        paint.strokeWidth = brushSize
-        canvas.drawLine(lastX, lastY, x, y, paint)
-    }
-
-    private fun drawSpray(x: Float, y: Float) {
-        val density = brushSize * 2
-        for (i in 0 until 15) {
-            val dx = (Math.random() * density - density / 2).toFloat()
-            val dy = (Math.random() * density - density / 2).toFloat()
-            paint.strokeWidth = brushSize * 0.3f
-            if (Math.sqrt((dx * dx + dy * dy).toDouble()) < density / 2) {
-                canvas.drawPoint(x + dx, y + dy, paint)
+    fun moveStroke(x: Float, y: Float) {
+        if (!isDrawing || drawingCanvas == null || lastPoint == null) return
+        val now = System.currentTimeMillis(); val dt = (now - lastTime).coerceAtLeast(1)
+        val dx = x - lastPoint!!.x; val dy = y - lastPoint!!.y
+        val distance = sqrt(dx * dx + dy * dy)
+        if (distance < 1f) return
+        val velocity = distance / dt * 1000f
+        when (currentTool) {
+            BrushTool.SPRAY -> {
+                val steps = (distance / 3f).toInt().coerceIn(1, 30)
+                val paint = Paint(currentPaint!!).apply { alpha = ((currentOpacity * 0.5f) * 255).toInt() }
+                for (i in 0 until steps) {
+                    val t = i.toFloat() / steps
+                    val sizeMod = currentSize * (0.6f + (velocity / 8000f).coerceIn(0f, 0.4f))
+                    drawSprayDot(lastPoint!!.x + dx * t, lastPoint!!.y + dy * t, sizeMod, paint)
+                }
+            }
+            BrushTool.BRUSH -> {
+                val sizeMod = currentSize * (0.5f + (velocity / 5000f).coerceIn(0f, 0.6f))
+                val paint = Paint(currentPaint!!).apply { strokeWidth = sizeMod; alpha = (currentOpacity * 255).toInt() }
+                currentPath!!.quadTo(lastPoint!!.x, lastPoint!!.y, (lastPoint!!.x + x) / 2f, (lastPoint!!.y + y) / 2f)
+                drawingCanvas!!.drawPath(currentPath!!, paint)
+            }
+            BrushTool.MARKER -> {
+                val paint = Paint(currentPaint!!).apply { alpha = ((currentOpacity * 0.85f) * 255).toInt() }
+                drawingCanvas!!.drawLine(lastPoint!!.x, lastPoint!!.y, x, y, paint)
+            }
+            BrushTool.ERASER -> {
+                val paint = Paint().apply { strokeWidth = currentSize * 2.5f; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND; xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR); isAntiAlias = true }
+                drawingCanvas!!.drawLine(lastPoint!!.x, lastPoint!!.y, x, y, paint)
             }
         }
+        lastPoint = PointF(x, y); lastTime = now
     }
 
-    private fun drawMarker(x: Float, y: Float) {
-        paint.strokeWidth = brushSize * 0.4f
-        paint.alpha = (brushOpacity * 180).toInt()
-        canvas.drawLine(lastX, lastY, x, y, paint)
+    fun endStroke() { isDrawing = false; currentPath = null; currentPaint = null; lastPoint = null }
+
+    private fun drawSprayDot(cx: Float, cy: Float, size: Float, paint: Paint) {
+        val density = (size / 2f).toInt().coerceIn(1, 20)
+        val fillPaint = Paint(paint).apply { style = Paint.Style.FILL; strokeWidth = 0f }
+        for (i in 0 until density) {
+            val angle = Math.random() * 2.0 * Math.PI; val radius = Math.random() * size * 0.6f
+            val dx = (Math.cos(angle) * radius).toFloat(); val dy = (Math.sin(angle) * radius).toFloat()
+            fillPaint.alpha = ((0.3 + Math.random() * 0.7) * paint.alpha).toInt().coerceIn(0, 255)
+            drawingCanvas?.drawPoint(cx + dx, cy + dy, fillPaint)
+        }
     }
 
-    fun render(c: Canvas) {
-        bitmap?.let { c.drawBitmap(it, 0f, 0f, null) }
-    }
-
-    fun clear() {
-        saveState()
-        bitmap?.eraseColor(Color.TRANSPARENT)
+    private fun saveStateForUndo() {
+        drawingBitmap?.let { bmp ->
+            undoStack.push(bmp.copy(bmp.config, true)); redoStack.clear()
+            if (undoStack.size > 30) undoStack.removeAt(0)
+        }
     }
 
     fun undo() {
-        if (undoStack.isNotEmpty()) {
-            redoStack.add(bitmap?.copy(Bitmap.Config.ARGB_8888, true)!!)
-            val prev = undoStack.removeAt(undoStack.lastIndex)
-            bitmap?.eraseColor(Color.TRANSPARENT)
-            canvas.drawBitmap(prev, 0f, 0f, null)
-        }
+        if (undoStack.isEmpty()) return
+        drawingBitmap?.let { redoStack.push(it.copy(it.config, true)) }
+        drawingBitmap = undoStack.pop(); drawingCanvas = Canvas(drawingBitmap!!)
     }
 
     fun redo() {
-        if (redoStack.isNotEmpty()) {
-            undoStack.add(bitmap?.copy(Bitmap.Config.ARGB_8888, true)!!)
-            val next = redoStack.removeAt(redoStack.lastIndex)
-            bitmap?.eraseColor(Color.TRANSPARENT)
-            canvas.drawBitmap(next, 0f, 0f, null)
-        }
+        if (redoStack.isEmpty()) return
+        drawingBitmap?.let { undoStack.push(it.copy(it.config, true)) }
+        drawingBitmap = redoStack.pop(); drawingCanvas = Canvas(drawingBitmap!!)
     }
 
-    private fun saveState() {
-        if (undoStack.size >= maxHistory) undoStack.removeAt(0)
-        undoStack.add(bitmap?.copy(Bitmap.Config.ARGB_8888, true)!!)
-        redoStack.clear()
+    fun clear() {
+        if (drawingBitmap == null) return
+        saveStateForUndo(); drawingCanvas!!.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+    }
+
+    fun hasContent(): Boolean {
+        drawingBitmap?.let { bmp ->
+            for (x in 0 until bmp.width step 10)
+                for (y in 0 until bmp.height step 10)
+                    if (bmp.getPixel(x, y) != Color.TRANSPARENT) return true
+        }
+        return false
     }
 }
+
+enum class BrushTool { SPRAY, BRUSH, MARKER, ERASER }
