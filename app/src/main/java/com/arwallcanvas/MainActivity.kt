@@ -6,7 +6,6 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Environment
-import android.widget.Button
 import android.widget.ImageButton
 import android.widget.SeekBar
 import android.widget.Toast
@@ -17,8 +16,6 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import com.arwallcanvas.drawing.DrawingEngine
 import com.arwallcanvas.ui.DrawingOverlayView
 import com.arwallcanvas.utils.BitmapUtils
@@ -50,7 +47,6 @@ class MainActivity : AppCompatActivity() {
         drawingOverlay = findViewById(R.id.drawingOverlay)
         colorPicker = findViewById(R.id.colorPicker)
         drawingEngine = DrawingEngine()
-
         drawingOverlay.setDrawingEngine(drawingEngine)
 
         colorPicker.setOnColorSelectedListener { color ->

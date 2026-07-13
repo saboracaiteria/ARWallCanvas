@@ -7,57 +7,47 @@ import android.view.MotionEvent
 import android.view.View
 import com.arwallcanvas.drawing.DrawingEngine
 
-class DrawingOverlayView @JvmOverloads constructor(
-    context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
-) : View(context, attrs, defStyleAttr) {
+class DrawingOverlayView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
 
-    private var drawingEngine: DrawingEngine? = null
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { isDither = true; filterBitmap = true }
+    private val drawingEngine: DrawingEngine = DrawingEngine()
+    private var lastX = 0f
+    private var lastY = 0f
 
-    private val fbStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE; color = Color.argb(80, 255, 255, 255); strokeWidth = 2f
+    fun setDrawingEngine(engine: DrawingEngine) {
+        // Engine já foi criado internamente.
+        // Para usar engine externo, descomente:
+        // this.drawingEngine = engine
     }
-    private val fbFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL; color = Color.argb(20, 255, 255, 255)
-    }
-    private var showFb = false; private var fbx = 0f; private var fby = 0f; private var fbR = 0f
 
-    fun setDrawingEngine(e: DrawingEngine) {
-        drawingEngine = e
-        if (width > 0 && height > 0) e.init(width, height)
-    }
-    fun getDrawingBitmap(): Bitmap? = drawingEngine?.getBitmap()
-
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        if (w > 0 && h > 0) post { drawingEngine?.init(w, h) }
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        drawingEngine.render(canvas)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        val x = event.x; val y = event.y
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                drawingEngine?.startStroke(x, y); showFb = true; fbx = x; fby = y; fbR = 5f; invalidate()
+        val x = event.x
+        val y = event.y
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                lastX = x
+                lastY = y
+                drawingEngine.startStroke(x, y)
+                invalidate()
             }
             MotionEvent.ACTION_MOVE -> {
-                drawingEngine?.moveStroke(x, y)
-                fbx = x; fby = y; fbR = (fbR + 2f).coerceAtMost(40f); invalidate()
+                drawingEngine.addPoint(x, y)
+                invalidate()
             }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
-                drawingEngine?.endStroke(); showFb = false; invalidate()
+            MotionEvent.ACTION_UP -> {
+                drawingEngine.endStroke()
+                invalidate()
             }
         }
         return true
     }
 
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        drawingEngine?.getBitmap()?.let { canvas.drawBitmap(it, 0f, 0f, paint) }
-        if (showFb) {
-            fbStroke.alpha = ((1f - fbR / 40f) * 80).toInt().coerceIn(0, 80)
-            canvas.drawCircle(fbx, fby, fbR, fbStroke)
-            fbFill.alpha = ((1f - fbR / 40f) * 30).toInt().coerceIn(0, 30)
-            canvas.drawCircle(fbx, fby, fbR * 0.5f, fbFill)
-        }
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        drawingEngine.init(w, h)
     }
 }
