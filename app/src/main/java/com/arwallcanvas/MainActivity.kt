@@ -3,7 +3,6 @@ package com.arwallcanvas
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.os.Environment
 import android.widget.ImageButton
 import android.widget.SeekBar
 import android.widget.Toast
@@ -14,17 +13,15 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import com.arwallcanvas.drawing.BrushTool
 import com.arwallcanvas.drawing.DrawingEngine
 import com.arwallcanvas.ui.DrawingOverlayView
-import com.arwallcanvas.utils.BitmapUtils
 import com.arwallcanvas.utils.ColorPicker
-import com.google.common.util.concurrent.ListenableFuture
 import java.io.File
+import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
 
@@ -32,108 +29,167 @@ class MainActivity : AppCompatActivity() {
     private lateinit var colorPicker: ColorPicker
     private lateinit var drawingEngine: DrawingEngine
     private lateinit var previewView: PreviewView
-    private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
     private lateinit var imageCapture: ImageCapture
-    private lateinit var cameraExecutor: ExecutorService
-    private var cameraFacing = CameraSelector.LENS_FACING_BACK
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // IDs do layout usam snake_case! NÃO camelCase.
+        // Inicializar views do layout
         previewView = findViewById(R.id.preview_view)
         drawingOverlay = findViewById(R.id.drawing_overlay)
         colorPicker = findViewById(R.id.color_picker)
 
+        // Inicializar motor de desenho
         drawingEngine = DrawingEngine()
         drawingOverlay.setDrawingEngine(drawingEngine)
 
+        // Configurar paleta de cores
         colorPicker.setOnColorSelectedListener { color ->
             drawingEngine.setColor(color)
+            colorPicker.visibility = android.view.View.GONE
         }
 
-        findViewById<ImageButton>(R.id.btn_brush).setOnClickListener {
-            drawingEngine.setTool(DrawingEngine.BrushTool.BRUSH)
+        // Configurar botões da toolbar
+        setupToolbar()
+
+        // Configurar sliders
+        setupSliders()
+
+        // Iniciar câmera
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            startCamera()
+        } else {
+            requestPermissions(arrayOf(Manifest.permission.CAMERA), 100)
         }
+
+        // Estado inicial
+        drawingEngine.setColor(android.graphics.Color.RED)
+        updateToolSelection()
+    }
+
+    private fun setupToolbar() {
         findViewById<ImageButton>(R.id.btn_spray).setOnClickListener {
-            drawingEngine.setTool(DrawingEngine.BrushTool.SPRAY)
+            drawingEngine.setTool(BrushTool.SPRAY)
+            updateToolSelection()
+        }
+        findViewById<ImageButton>(R.id.btn_brush).setOnClickListener {
+            drawingEngine.setTool(BrushTool.BRUSH)
+            updateToolSelection()
         }
         findViewById<ImageButton>(R.id.btn_marker).setOnClickListener {
-            drawingEngine.setTool(DrawingEngine.BrushTool.MARKER)
+            drawingEngine.setTool(BrushTool.MARKER)
+            updateToolSelection()
         }
         findViewById<ImageButton>(R.id.btn_eraser).setOnClickListener {
-            drawingEngine.setTool(DrawingEngine.BrushTool.ERASER)
+            drawingEngine.setTool(BrushTool.ERASER)
+            updateToolSelection()
         }
         findViewById<ImageButton>(R.id.btn_undo).setOnClickListener {
             drawingEngine.undo()
+            drawingOverlay.invalidate()
         }
         findViewById<ImageButton>(R.id.btn_redo).setOnClickListener {
             drawingEngine.redo()
+            drawingOverlay.invalidate()
         }
         findViewById<ImageButton>(R.id.btn_clear).setOnClickListener {
             drawingEngine.clear()
+            drawingOverlay.invalidate()
+            Toast.makeText(this, "Tela limpa", Toast.LENGTH_SHORT).show()
         }
-
-        findViewById<SeekBar>(R.id.size_slider).setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seek: SeekBar, v: Int, b: Boolean) { drawingEngine.setSize(v / 10f) }
-            override fun onStartTrackingTouch(seek: SeekBar) {}
-            override fun onStopTrackingTouch(seek: SeekBar) {}
-        })
-
-        findViewById<SeekBar>(R.id.opacity_slider).setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seek: SeekBar, v: Int, b: Boolean) { drawingEngine.setOpacity(v / 255f) }
-            override fun onStartTrackingTouch(seek: SeekBar) {}
-            override fun onStopTrackingTouch(seek: SeekBar) {}
-        })
-
+        findViewById<ImageButton>(R.id.btn_color).setOnClickListener {
+            colorPicker.visibility = if (colorPicker.visibility == android.view.View.VISIBLE)
+                android.view.View.GONE else android.view.View.VISIBLE
+        }
         findViewById<ImageButton>(R.id.btn_save).setOnClickListener {
-            saveDrawing()
+            salvarArte()
         }
+    }
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-            != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.CAMERA), 1001)
-        } else {
-            startCamera()
+    private fun updateToolSelection() {
+        val map = mapOf(
+            R.id.btn_spray to BrushTool.SPRAY,
+            R.id.btn_brush to BrushTool.BRUSH,
+            R.id.btn_marker to BrushTool.MARKER,
+            R.id.btn_eraser to BrushTool.ERASER
+        )
+        map.forEach { (id, tool) ->
+            findViewById<ImageButton>(id).alpha = if (drawingEngine.tool == tool) 1.0f else 0.4f
         }
-        cameraExecutor = Executors.newSingleThreadExecutor()
+    }
+
+    private fun setupSliders() {
+        findViewById<SeekBar>(R.id.size_slider).setOnSeekBarChangeListener(
+            object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seek: SeekBar, progress: Int, fromUser: Boolean) {
+                    drawingEngine.setSize(progress.toFloat())
+                }
+                override fun onStartTrackingTouch(seek: SeekBar) {}
+                override fun onStopTrackingTouch(seek: SeekBar) {}
+            }
+        )
+
+        findViewById<SeekBar>(R.id.opacity_slider).setOnSeekBarChangeListener(
+            object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seek: SeekBar, progress: Int, fromUser: Boolean) {
+                    drawingEngine.setOpacity(progress / 100f)
+                }
+                override fun onStartTrackingTouch(seek: SeekBar) {}
+                override fun onStopTrackingTouch(seek: SeekBar) {}
+            }
+        )
     }
 
     private fun startCamera() {
-        cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
-            val preview = Preview.Builder().build().also {
-                it.setSurfaceProvider(previewView.surfaceProvider)
-            }
-            imageCapture = ImageCapture.Builder().build()
-            val cameraSelector = CameraSelector.Builder()
-                .requireLensFacing(cameraFacing).build()
-            try {
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+
+            val preview = Preview.Builder().build()
+            preview.setSurfaceProvider(previewView.surfaceProvider)
+
+            imageCapture = ImageCapture.Builder()
+                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                .build()
+
+            cameraProvider.unbindAll()
+            cameraProvider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageCapture)
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun saveDrawing() {
+    private fun salvarArte() {
         val bitmap = drawingEngine.getBitmap()
         if (bitmap == null || !drawingEngine.hasContent()) {
-            Toast.makeText(this, "Nada para salvar", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Nada para salvar — desenhe algo primeiro!", Toast.LENGTH_SHORT).show()
             return
         }
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val dir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-        val file = File(dir, "ARCanvas_$timeStamp.png")
-        BitmapUtils.saveBitmap(bitmap, file)
-        Toast.makeText(this, "Salvo: ${file.name}", Toast.LENGTH_LONG).show()
+
+        try {
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+            val fileName = "ARWallCanvas_$timestamp.png"
+            val dir = getExternalFilesDir(null)
+            val file = File(dir, fileName)
+
+            FileOutputStream(file).use { out ->
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+                out.flush()
+            }
+
+            Toast.makeText(this, "Salvo como: $fileName", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Erro ao salvar: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        cameraExecutor.shutdown()
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 100 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            startCamera()
+        } else {
+            Toast.makeText(this, "Permissão de câmera necessária", Toast.LENGTH_LONG).show()
+        }
     }
 }

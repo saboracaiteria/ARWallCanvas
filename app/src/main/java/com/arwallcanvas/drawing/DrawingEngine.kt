@@ -4,16 +4,26 @@ import android.graphics.*
 import java.io.File
 import java.io.FileOutputStream
 
+/**
+ * Ferramentas de desenho disponíveis.
+ */
 enum class BrushTool {
     BRUSH, SPRAY, MARKER, ERASER
 }
 
+/**
+ * Motor de desenho responsável por gerenciar pinceladas,
+ * ferramentas, undo/redo e o bitmap de desenho.
+ */
 class DrawingEngine {
 
     private var bitmap: Bitmap? = null
     private val canvas = Canvas()
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var currentTool = BrushTool.BRUSH
+    var tool: BrushTool
+        get() = currentTool
+        set(value) { currentTool = value }
     private var brushSize = 20f
     private var brushOpacity = 1.0f
     private var currentColor = Color.BLACK
@@ -61,7 +71,7 @@ class DrawingEngine {
             BrushTool.SPRAY -> drawSpray(x, y)
             BrushTool.MARKER -> drawLine(x, y)
             BrushTool.ERASER -> drawEraser(x, y)
-            else -> drawLine(x, y) // BRUSH
+            BrushTool.BRUSH -> drawLine(x, y)
         }
         lastX = x
         lastY = y
@@ -79,7 +89,6 @@ class DrawingEngine {
     }
 
     private fun drawEraser(x: Float, y: Float) {
-        paint.color = Color.TRANSPARENT
         paint.strokeWidth = brushSize * 2f
         paint.style = Paint.Style.STROKE
         paint.strokeCap = Paint.Cap.ROUND
