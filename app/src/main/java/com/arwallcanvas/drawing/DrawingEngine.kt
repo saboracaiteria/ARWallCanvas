@@ -2,7 +2,7 @@ package com.arwallcanvas.drawing
 
 import android.content.Context
 import android.graphics.*
-import java.util.Stack
+import kotlin.collections.ArrayDeque
 import kotlin.math.sqrt
 
 class DrawingEngine(private val context: Context) {
@@ -10,8 +10,8 @@ class DrawingEngine(private val context: Context) {
     private var drawingBitmap: Bitmap? = null
     private var drawingCanvas: Canvas? = null
 
-    private val undoStack = Stack<Bitmap>()
-    private val redoStack = Stack<Bitmap>()
+    private val undoStack = ArrayDeque<Bitmap>()
+    private val redoStack = ArrayDeque<Bitmap>()
 
     private var currentTool = BrushTool.SPRAY
     private var currentColor = Color.RED
@@ -19,7 +19,6 @@ class DrawingEngine(private val context: Context) {
     private var currentOpacity = 1f
     private var lastPoint: PointF? = null
     private var lastTime = 0L
-    private var currentPath: Path? = null
     private var currentPaint: Paint? = null
     private var isDrawing = false
 
@@ -65,9 +64,6 @@ class DrawingEngine(private val context: Context) {
         isDrawing = true
         lastPoint = PointF(x, y)
         lastTime = System.currentTimeMillis()
-
-        currentPath = Path()
-        currentPath!!.moveTo(x, y)
 
         currentPaint = Paint().apply {
             color = currentColor
@@ -126,11 +122,7 @@ class DrawingEngine(private val context: Context) {
                     strokeWidth = sizeMod
                     alpha = (currentOpacity * 255).toInt()
                 }
-                currentPath!!.quadTo(
-                    lastPoint!!.x, lastPoint!!.y,
-                    (lastPoint!!.x + x) / 2f, (lastPoint!!.y + y) / 2f
-                )
-                drawingCanvas!!.drawPath(currentPath!!, paint)
+                drawingCanvas!!.drawLine(lastPoint!!.x, lastPoint!!.y, x, y, paint)
             }
             BrushTool.MARKER -> {
                 val paint = Paint(currentPaint!!).apply {
@@ -157,7 +149,6 @@ class DrawingEngine(private val context: Context) {
 
     fun endStroke() {
         isDrawing = false
-        currentPath = null
         currentPaint = null
         lastPoint = null
     }
@@ -183,10 +174,10 @@ class DrawingEngine(private val context: Context) {
     private fun saveStateForUndo() {
         drawingBitmap?.let { bmp ->
             val copy = bmp.copy(bmp.config, true)
-            undoStack.push(copy)
+            undoStack.addLast(copy)
             redoStack.clear()
             if (undoStack.size > 30) {
-                undoStack.removeAt(0)
+                undoStack.removeFirst()
             }
         }
     }
@@ -194,18 +185,18 @@ class DrawingEngine(private val context: Context) {
     fun undo() {
         if (undoStack.isEmpty()) return
         drawingBitmap?.let { bmp ->
-            redoStack.push(bmp.copy(bmp.config, true))
+            redoStack.addLast(bmp.copy(bmp.config, true))
         }
-        drawingBitmap = undoStack.pop()
+        drawingBitmap = undoStack.removeLast()
         drawingCanvas = Canvas(drawingBitmap!!)
     }
 
     fun redo() {
         if (redoStack.isEmpty()) return
         drawingBitmap?.let { bmp ->
-            undoStack.push(bmp.copy(bmp.config, true))
+            undoStack.addLast(bmp.copy(bmp.config, true))
         }
-        drawingBitmap = redoStack.pop()
+        drawingBitmap = redoStack.removeLast()
         drawingCanvas = Canvas(drawingBitmap!!)
     }
 

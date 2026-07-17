@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import com.arwallcanvas.drawing.BrushTool
 import com.arwallcanvas.drawing.DrawingEngine
 import com.arwallcanvas.ui.DrawingOverlayView
+import com.arwallcanvas.utils.ColorPicker
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -72,6 +73,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupToolbar()
+        setupColorPicker()
         setupSliders()
 
         drawingEngine.setTool(currentTool)
@@ -143,6 +145,11 @@ class MainActivity : AppCompatActivity() {
         findViewById<ImageButton>(R.id.btn_save)?.setOnClickListener {
             salvarArte()
         }
+
+        findViewById<ImageButton>(R.id.btn_color)?.setOnClickListener {
+            val cp = findViewById<ColorPicker>(R.id.color_picker)
+            cp.visibility = if (cp.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+        }
     }
 
     private fun updateToolSelection() {
@@ -154,6 +161,13 @@ class MainActivity : AppCompatActivity() {
         )
         map.forEach { (id, tool) ->
             findViewById<ImageButton>(id)?.alpha = if (tool == currentTool) 1.0f else 0.4f
+        }
+    }
+
+    private fun setupColorPicker() {
+        findViewById<ColorPicker>(R.id.color_picker)?.setOnColorSelectedListener { color ->
+            currentColor = color
+            drawingEngine.setColor(color)
         }
     }
 
