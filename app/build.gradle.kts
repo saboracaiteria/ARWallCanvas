@@ -61,9 +61,6 @@ dependencies {
     // ARCore
     implementation("com.google.ar:core:1.42.0")
 
-    // SceneView (renderização AR/3D leve)
-    implementation("io.github.sceneview:arsceneview:1.1.0")
-
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
