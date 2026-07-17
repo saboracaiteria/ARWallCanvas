@@ -29,7 +29,6 @@ class DrawingEngine(private val context: Context) {
         private set
 
     // Alias para getBitmap (compatibilidade)
-    val bitmap: Bitmap?
         get() = drawingBitmap
 
     fun init(w: Int, h: Int) {

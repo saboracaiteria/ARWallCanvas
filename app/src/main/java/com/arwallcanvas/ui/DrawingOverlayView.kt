@@ -90,7 +90,7 @@ class DrawingOverlayView(context: Context, attrs: AttributeSet?) : View(context,
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        val bmp = drawingEngine?.bitmap
+        val bmp = drawingEngine?.getBitmap()
         if (bmp != null) {
             canvas.drawBitmap(bmp, 0f, 0f, paint)
         }
