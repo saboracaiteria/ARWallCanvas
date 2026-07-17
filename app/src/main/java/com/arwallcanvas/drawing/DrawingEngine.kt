@@ -29,7 +29,6 @@ class DrawingEngine(private val context: Context) {
         private set
 
     // Alias para getBitmap (compatibilidade)
-        get() = drawingBitmap
 
     fun init(w: Int, h: Int) {
         if (w <= 0 || h <= 0 || w == width && h == height && drawingBitmap != null) return
