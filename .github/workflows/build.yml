@@ -1,4 +1,4 @@
-name: Build ARWallCanvas
+name: CI - Build & Lint ARWallCanvas
 
 on:
   push:
@@ -9,6 +9,7 @@ on:
 
 jobs:
   build:
+    name: 🏗️ Build
     runs-on: ubuntu-latest
 
     steps:
@@ -24,26 +25,26 @@ jobs:
       - name: 📱 Configurar Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 📦 Install platform 34
-        run: yes | sdkmanager "platforms;android-34" "build-tools;34.0.0" 2>&1 || true
-
-      - name: 🏗️ Configurar Gradle
-        uses: gradle/actions/setup-gradle@v3
-
       - name: 🔧 Dar permissão ao gradlew
         run: chmod +x gradlew
 
+      - name: 🏗️ Cache do Gradle
+        uses: gradle/actions/setup-gradle@v3
+
       - name: 🧪 Build de debug
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --no-daemon
 
       - name: 📦 Upload do APK (debug)
         uses: actions/upload-artifact@v4
         with:
           name: ARWallCanvas-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
 
   lint:
+    name: 🔍 Lint
     runs-on: ubuntu-latest
+
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
@@ -57,20 +58,18 @@ jobs:
       - name: 📱 Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 📦 Install platform 34
-        run: yes | sdkmanager "platforms;android-34" "build-tools;34.0.0" 2>&1 || true
-
-      - name: 🏗️ Gradle
-        uses: gradle/actions/setup-gradle@v3
-
       - name: 🔧 Permissão
         run: chmod +x gradlew
 
-      - name: 🔍 Lint
-        run: ./gradlew lint
+      - name: 💾 Cache do Gradle
+        uses: gradle/actions/setup-gradle@v3
 
-      - name: 📊 Upload lint results
+      - name: 🔍 Executar Lint
+        run: ./gradlew lint --no-daemon
+
+      - name: 📊 Upload relatório de lint
         uses: actions/upload-artifact@v4
         with:
           name: lint-report
           path: app/build/reports/lint-results-*.html
+          retention-days: 7

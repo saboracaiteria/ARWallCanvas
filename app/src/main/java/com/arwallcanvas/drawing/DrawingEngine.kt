@@ -52,7 +52,13 @@ class DrawingEngine(private val context: Context) {
         val newBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val newCanvas = Canvas(newBitmap)
         newCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
-
+fun endStroke() {
+    isDrawing = false
+}
+    isDrawing = false
+}
+    isDrawing = false
+}
         // Copiar desenho existente se houver
         if (drawingBitmap != null) {
             newCanvas.drawBitmap(drawingBitmap!!, 0f, 0f, null)

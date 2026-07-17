@@ -67,12 +67,12 @@ class MainActivity : AppCompatActivity() {
             startCamera()
         } else {
             Toast.makeText(this, "Permissão de câmera necessária", Toast.LENGTH_LONG).show()
-        }
+drawingEngine = DrawingEngine()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+drawingEngine = DrawingEngine(this)
 
         // Inicializar views
         initViews()

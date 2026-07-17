@@ -7,58 +7,56 @@ import android.view.MotionEvent
 import android.view.View
 import com.arwallcanvas.drawing.DrawingEngine
 
-/**
- * View transparente sobre a câmera que captura toques e renderiza o desenho.
- * Feedbacks visuais sutis mostram onde o usuário está tocando.
- */
-class DrawingOverlayView @JvmOverloads constructor(
-    context: Context,
-    attrs: AttributeSet? = null,
-    defStyleAttr: Int = 0
-) : View(context, attrs, defStyleAttr) {
+class DrawingOverlayView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
 
     private var drawingEngine: DrawingEngine? = null
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        isDither = true
-        filterBitmap = true
-    }
-
-    // Feedback visual de toque
-    private val feedbackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        color = Color.argb(80, 255, 255, 255)
-        strokeWidth = 2f
-    }
-    private val feedbackFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-        color = Color.argb(20, 255, 255, 255)
-    }
-
-    private var showFeedback = false
-    private var feedbackX = 0f
-    private var feedbackY = 0f
-    private var feedbackRadius = 0f
-
     private var lastX = 0f
     private var lastY = 0f
 
     fun setDrawingEngine(engine: DrawingEngine) {
-        drawingEngine = engine
-        // Se já tiver tamanho, inicializar o engine
-        if (width > 0 && height > 0) {
-            engine.init(width, height)
+        this.drawingEngine = engine
+        engine.init(width, height)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val bmp = drawingEngine?.bitmap
+        if (bmp != null) {
+            canvas.drawBitmap(bmp, 0f, 0f, null)
         }
     }
 
-    /**
-     * Retorna o bitmap do desenho atual.
-     */
-    fun getDrawingBitmap(): Bitmap? = drawingEngine?.getBitmap()
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        val engine = drawingEngine ?: return false
+        val x = event.x
+        val y = event.y
 
-    /**
-     * Inicializa o DrawingEngine quando a view muda de tamanho.
-     */
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                engine.startStroke(x, y)
+                invalidate()
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                engine.addPoint(x, y)
+                invalidate()
+                return true
+            }
+            MotionEvent.ACTION_UP -> {
+                engine.endStroke()
+                invalidate()
+                return true
+            }
+        }
+        return super.onTouchEvent(event)
+    }
+
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        drawingEngine?.init(w, h)
+        postInvalidate()
+    }
+}
         super.onSizeChanged(w, h, oldw, oldh)
         if (w > 0 && h > 0) {
             post {
