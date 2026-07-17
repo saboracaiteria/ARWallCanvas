@@ -60,6 +60,7 @@ class DrawingEngine(private val context: Context) {
     fun addPoint(x: Float, y: Float) = moveStroke(x, y)
 
     fun startStroke(x: Float, y: Float) {
+        if (drawingCanvas == null) return
         saveStateForUndo()
         isDrawing = true
         lastPoint = PointF(x, y)

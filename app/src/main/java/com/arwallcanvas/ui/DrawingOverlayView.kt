@@ -44,9 +44,7 @@ class DrawingOverlayView(context: Context, attrs: AttributeSet?) : View(context,
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        post {
-            drawingEngine?.init(w, h)
-        }
+        drawingEngine?.init(w, h)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -55,7 +53,10 @@ class DrawingOverlayView(context: Context, attrs: AttributeSet?) : View(context,
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                drawingEngine?.startStroke(x, y)
+                val engine = drawingEngine
+                if (engine != null) {
+                    engine.startStroke(x, y)
+                }
                 lastX = x
                 lastY = y
                 showFeedback = true
@@ -65,7 +66,10 @@ class DrawingOverlayView(context: Context, attrs: AttributeSet?) : View(context,
                 invalidate()
             }
             MotionEvent.ACTION_MOVE -> {
-                drawingEngine?.moveStroke(x, y)
+                val engine = drawingEngine
+                if (engine != null) {
+                    engine.moveStroke(x, y)
+                }
                 lastX = x
                 lastY = y
                 feedbackX = x
@@ -74,12 +78,18 @@ class DrawingOverlayView(context: Context, attrs: AttributeSet?) : View(context,
                 invalidate()
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
-                drawingEngine?.endStroke()
+                val engine = drawingEngine
+                if (engine != null) {
+                    engine.endStroke()
+                }
                 showFeedback = false
                 invalidate()
             }
             MotionEvent.ACTION_CANCEL -> {
-                drawingEngine?.endStroke()
+                val engine = drawingEngine
+                if (engine != null) {
+                    engine.endStroke()
+                }
                 showFeedback = false
                 invalidate()
             }
