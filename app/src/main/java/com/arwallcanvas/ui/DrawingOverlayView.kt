@@ -12,56 +12,40 @@ class DrawingOverlayView(context: Context, attrs: AttributeSet?) : View(context,
     private var drawingEngine: DrawingEngine? = null
     private var lastX = 0f
     private var lastY = 0f
+    private var showFeedback = false
+    private var feedbackX = 0f
+    private var feedbackY = 0f
+    private var feedbackRadius = 5f
+
+    private val feedbackPaint = Paint().apply {
+        color = Color.WHITE
+        style = Paint.Style.STROKE
+        strokeWidth = 2f
+        isAntiAlias = true
+    }
+
+    private val feedbackFillPaint = Paint().apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+        isAntiAlias = true
+    }
+
+    private val paint = Paint().apply {
+        isAntiAlias = true
+        isDither = true
+    }
 
     fun setDrawingEngine(engine: DrawingEngine) {
         this.drawingEngine = engine
-        engine.init(width, height)
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        val bmp = drawingEngine?.bitmap
-        if (bmp != null) {
-            canvas.drawBitmap(bmp, 0f, 0f, null)
+        if (width > 0 && height > 0) {
+            engine.init(width, height)
         }
-    }
-
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        val engine = drawingEngine ?: return false
-        val x = event.x
-        val y = event.y
-
-        when (event.action) {
-            MotionEvent.ACTION_DOWN -> {
-                engine.startStroke(x, y)
-                invalidate()
-                return true
-            }
-            MotionEvent.ACTION_MOVE -> {
-                engine.addPoint(x, y)
-                invalidate()
-                return true
-            }
-            MotionEvent.ACTION_UP -> {
-                engine.endStroke()
-                invalidate()
-                return true
-            }
-        }
-        return super.onTouchEvent(event)
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        drawingEngine?.init(w, h)
-        postInvalidate()
-    }
-}
-        super.onSizeChanged(w, h, oldw, oldh)
-        if (w > 0 && h > 0) {
-            post {
-                drawingEngine?.init(w, h)
-            }
+        post {
+            drawingEngine?.init(w, h)
         }
     }
 
@@ -71,7 +55,6 @@ class DrawingOverlayView(context: Context, attrs: AttributeSet?) : View(context,
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                // Iniciar traço
                 drawingEngine?.startStroke(x, y)
                 lastX = x
                 lastY = y
@@ -82,7 +65,6 @@ class DrawingOverlayView(context: Context, attrs: AttributeSet?) : View(context,
                 invalidate()
             }
             MotionEvent.ACTION_MOVE -> {
-                // Mover traço
                 drawingEngine?.moveStroke(x, y)
                 lastX = x
                 lastY = y
@@ -92,7 +74,6 @@ class DrawingOverlayView(context: Context, attrs: AttributeSet?) : View(context,
                 invalidate()
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
-                // Finalizar traço
                 drawingEngine?.endStroke()
                 showFeedback = false
                 invalidate()
@@ -109,19 +90,15 @@ class DrawingOverlayView(context: Context, attrs: AttributeSet?) : View(context,
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        // Desenhar o bitmap do drawing engine
-        val bitmap = drawingEngine?.getBitmap()
-        if (bitmap != null) {
-            canvas.drawBitmap(bitmap, 0f, 0f, paint)
+        val bmp = drawingEngine?.bitmap
+        if (bmp != null) {
+            canvas.drawBitmap(bmp, 0f, 0f, paint)
         }
 
-        // Feedback visual do toque
         if (showFeedback) {
-            // Círculo externo pulsante
             feedbackPaint.alpha = ((1f - feedbackRadius / 40f) * 80).toInt().coerceIn(0, 80)
             canvas.drawCircle(feedbackX, feedbackY, feedbackRadius, feedbackPaint)
 
-            // Preenchimento sutil
             feedbackFillPaint.alpha = ((1f - feedbackRadius / 40f) * 30).toInt().coerceIn(0, 30)
             canvas.drawCircle(feedbackX, feedbackY, feedbackRadius * 0.5f, feedbackFillPaint)
         }

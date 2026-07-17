@@ -20,7 +20,6 @@ import androidx.core.content.ContextCompat
 import com.arwallcanvas.drawing.BrushTool
 import com.arwallcanvas.drawing.DrawingEngine
 import com.arwallcanvas.ui.DrawingOverlayView
-import com.arwallcanvas.utils.ColorPicker
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -29,37 +28,20 @@ import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-/**
- * MainActivity do ARWallCanvas.
- *
- * Abre a câmera, sobrepõe uma camada de desenho e fornece
- * ferramentas de pintura (spray, pincel, marcador, borracha)
- * com suporte a desfazer/refazer, paleta de cores e salvamento.
- *
- * Inspirado na filosofia Augmented Graffiti — cada traço importa.
- */
 class MainActivity : AppCompatActivity() {
 
-    // Componentes de UI
     private lateinit var previewView: PreviewView
     private lateinit var drawingOverlay: DrawingOverlayView
-    private lateinit var colorPicker: ColorPicker
     private lateinit var toolbar: View
-
-    // Motor de desenho
     private lateinit var drawingEngine: DrawingEngine
-
-    // Câmera
     private lateinit var imageCapture: ImageCapture
     private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 
-    // Estado atual
     private var currentTool = BrushTool.SPRAY
     private var currentColor = Color.RED
     private var currentSize = 20f
     private var currentOpacity = 0.8f
 
-    // Launcher de permissão
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -67,21 +49,20 @@ class MainActivity : AppCompatActivity() {
             startCamera()
         } else {
             Toast.makeText(this, "Permissão de câmera necessária", Toast.LENGTH_LONG).show()
-drawingEngine = DrawingEngine()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-drawingEngine = DrawingEngine(this)
+        setContentView(R.layout.activity_main)
 
-        // Inicializar views
-        initViews()
+        previewView = findViewById(R.id.preview_view)
+        drawingOverlay = findViewById(R.id.drawing_overlay)
+        toolbar = findViewById(R.id.tool_bar)
 
-        // Inicializar motor de desenho
         drawingEngine = DrawingEngine(this)
         drawingOverlay.setDrawingEngine(drawingEngine)
 
-        // Configurar câmera
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             == PackageManager.PERMISSION_GRANTED
         ) {
@@ -90,27 +71,15 @@ drawingEngine = DrawingEngine(this)
             requestPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
 
-        // Configurar controles da UI
         setupToolbar()
         setupSliders()
-        setupColorPicker()
 
-        // Estado inicial
         drawingEngine.setTool(currentTool)
         drawingEngine.setColor(currentColor)
         drawingEngine.setSize(currentSize)
         drawingEngine.setOpacity(currentOpacity)
         updateToolSelection()
     }
-
-    private fun initViews() {
-        previewView = findViewById(R.id.preview_view)
-        drawingOverlay = findViewById(R.id.drawing_overlay)
-        colorPicker = findViewById(R.id.color_picker)
-        toolbar = findViewById(R.id.tool_bar)
-    }
-
-    // ==================== CÂMERA ====================
 
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
@@ -135,8 +104,6 @@ drawingEngine = DrawingEngine(this)
             }
         }, ContextCompat.getMainExecutor(this))
     }
-
-    // ==================== BARRA DE FERRAMENTAS ====================
 
     private fun setupToolbar() {
         findViewById<ImageButton>(R.id.btn_spray)?.setOnClickListener {
@@ -173,10 +140,6 @@ drawingEngine = DrawingEngine(this)
             drawingOverlay.invalidate()
             Toast.makeText(this, "Tela limpa", Toast.LENGTH_SHORT).show()
         }
-        findViewById<ImageButton>(R.id.btn_color)?.setOnClickListener {
-            colorPicker.visibility = if (colorPicker.visibility == View.VISIBLE)
-                View.GONE else View.VISIBLE
-        }
         findViewById<ImageButton>(R.id.btn_save)?.setOnClickListener {
             salvarArte()
         }
@@ -193,18 +156,6 @@ drawingEngine = DrawingEngine(this)
             findViewById<ImageButton>(id)?.alpha = if (tool == currentTool) 1.0f else 0.4f
         }
     }
-
-    // ==================== PALETA DE CORES ====================
-
-    private fun setupColorPicker() {
-        colorPicker.setOnColorSelectedListener { color ->
-            currentColor = color
-            drawingEngine.setColor(color)
-            colorPicker.visibility = View.GONE
-        }
-    }
-
-    // ==================== SLIDERS ====================
 
     private fun setupSliders() {
         findViewById<SeekBar>(R.id.size_slider)?.setOnSeekBarChangeListener(
@@ -229,8 +180,6 @@ drawingEngine = DrawingEngine(this)
             }
         )
     }
-
-    // ==================== SALVAR ====================
 
     private fun salvarArte() {
         val bitmap = drawingEngine.getBitmap()

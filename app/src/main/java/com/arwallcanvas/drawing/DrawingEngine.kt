@@ -5,33 +5,20 @@ import android.graphics.*
 import java.util.Stack
 import kotlin.math.sqrt
 
-/**
- * Motor de desenho principal do ARWallCanvas.
- * Gerencia pinceladas, ferramentas, desfazer/refazer.
- * Cada traço registra física (velocidade, pressão simulada).
- * Inspirado na filosofia Augmented Graffiti — craftmanship digital.
- */
 class DrawingEngine(private val context: Context) {
 
-    // Bitmap de desenho
     private var drawingBitmap: Bitmap? = null
     private var drawingCanvas: Canvas? = null
 
-    // Histórico para undo/redo
     private val undoStack = Stack<Bitmap>()
     private val redoStack = Stack<Bitmap>()
 
-    // Estado atual da ferramenta
     private var currentTool = BrushTool.SPRAY
     private var currentColor = Color.RED
     private var currentSize = 20f
     private var currentOpacity = 1f
-
-    // Rastreamento de movimento para física
     private var lastPoint: PointF? = null
     private var lastTime = 0L
-
-    // Path da pincelada atual
     private var currentPath: Path? = null
     private var currentPaint: Paint? = null
     private var isDrawing = false
@@ -41,9 +28,10 @@ class DrawingEngine(private val context: Context) {
     var height: Int = 0
         private set
 
-    /**
-     * Inicializa o bitmap de desenho com as dimensões da view.
-     */
+    // Alias para getBitmap (compatibilidade)
+    val bitmap: Bitmap?
+        get() = drawingBitmap
+
     fun init(w: Int, h: Int) {
         if (w <= 0 || h <= 0 || w == width && h == height && drawingBitmap != null) return
         width = w
@@ -52,14 +40,7 @@ class DrawingEngine(private val context: Context) {
         val newBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val newCanvas = Canvas(newBitmap)
         newCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
-fun endStroke() {
-    isDrawing = false
-}
-    isDrawing = false
-}
-    isDrawing = false
-}
-        // Copiar desenho existente se houver
+
         if (drawingBitmap != null) {
             newCanvas.drawBitmap(drawingBitmap!!, 0f, 0f, null)
         }
@@ -73,14 +54,13 @@ fun endStroke() {
 
     fun getBitmap(): Bitmap? = drawingBitmap
 
-    // --- Setters públicos ---
-
     fun setTool(tool: BrushTool) { currentTool = tool }
     fun setColor(color: Int) { currentColor = color }
     fun setSize(size: Float) { currentSize = size.coerceIn(3f, 100f) }
     fun setOpacity(opacity: Float) { currentOpacity = opacity.coerceIn(0f, 1f) }
 
-    // --- Desenho ---
+    // Alias para compatibilidade com DrawingOverlayView
+    fun addPoint(x: Float, y: Float) = moveStroke(x, y)
 
     fun startStroke(x: Float, y: Float) {
         saveStateForUndo()
@@ -102,7 +82,6 @@ fun endStroke() {
             alpha = (currentOpacity * 255).toInt()
         }
 
-        // Ponto inicial
         if (currentTool == BrushTool.ERASER) {
             val eraserPaint = Paint(currentPaint!!).apply {
                 strokeWidth = currentSize * 2f
@@ -125,13 +104,12 @@ fun endStroke() {
         val dy = y - lastPoint!!.y
         val distance = sqrt(dx * dx + dy * dy)
 
-        if (distance < 1f) return // Ignorar micro-movimentos
+        if (distance < 1f) return
 
-        val velocity = distance / dt * 1000f // pixels por segundo
+        val velocity = distance / dt * 1000f
 
         when (currentTool) {
             BrushTool.SPRAY -> {
-                // Spray: pontos dispersos ao longo da linha
                 val steps = (distance / 3f).toInt().coerceIn(1, 30)
                 val paint = Paint(currentPaint!!).apply {
                     alpha = ((currentOpacity * 0.5f) * 255).toInt()
@@ -140,13 +118,11 @@ fun endStroke() {
                     val t = i.toFloat() / steps
                     val px = lastPoint!!.x + dx * t
                     val py = lastPoint!!.y + dy * t
-                    // Tamanho varia com velocidade (mais rápido = mais fino)
                     val sizeMod = currentSize * (0.6f + (velocity / 8000f).coerceIn(0f, 0.4f))
                     drawSprayDot(px, py, sizeMod, paint)
                 }
             }
             BrushTool.BRUSH -> {
-                // Pincel: path suave com modulação de tamanho pela velocidade
                 val sizeMod = currentSize * (0.5f + (velocity / 5000f).coerceIn(0f, 0.6f))
                 val paint = Paint(currentPaint!!).apply {
                     strokeWidth = sizeMod
@@ -159,14 +135,12 @@ fun endStroke() {
                 drawingCanvas!!.drawPath(currentPath!!, paint)
             }
             BrushTool.MARKER -> {
-                // Marcador: linha reta com opacidade constante
                 val paint = Paint(currentPaint!!).apply {
                     alpha = ((currentOpacity * 0.85f) * 255).toInt()
                 }
                 drawingCanvas!!.drawLine(lastPoint!!.x, lastPoint!!.y, x, y, paint)
             }
             BrushTool.ERASER -> {
-                // Borracha: limpa o desenho
                 val paint = Paint().apply {
                     strokeWidth = currentSize * 2.5f
                     style = Paint.Style.STROKE
@@ -190,9 +164,6 @@ fun endStroke() {
         lastPoint = null
     }
 
-    /**
-     * Desenha pontos dispersos simulando spray.
-     */
     private fun drawSprayDot(cx: Float, cy: Float, size: Float, paint: Paint) {
         val density = (size / 2f).toInt().coerceIn(1, 20)
         val fillPaint = Paint(paint).apply {
@@ -210,8 +181,6 @@ fun endStroke() {
             drawingCanvas?.drawPoint(cx + dx, cy + dy, fillPaint)
         }
     }
-
-    // --- Undo / Redo ---
 
     private fun saveStateForUndo() {
         drawingBitmap?.let { bmp ->
@@ -250,7 +219,6 @@ fun endStroke() {
 
     fun hasContent(): Boolean {
         drawingBitmap?.let { bmp ->
-            // Verificar se há pixels não-transparentes
             for (x in 0 until bmp.width step 10) {
                 for (y in 0 until bmp.height step 10) {
                     if (bmp.getPixel(x, y) != Color.TRANSPARENT) return true
@@ -261,9 +229,6 @@ fun endStroke() {
     }
 }
 
-/**
- * Tipos de ferramentas de desenho.
- */
 enum class BrushTool {
     SPRAY,
     BRUSH,
