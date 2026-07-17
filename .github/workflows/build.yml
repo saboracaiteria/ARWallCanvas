@@ -8,68 +8,67 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    name: 🏗️ Build
+  validate:
+    name: Validate Resources
     runs-on: ubuntu-latest
-
     steps:
-      - name: 📥 Checkout do código
-        uses: actions/checkout@v4
-
-      - name: ☕ Configurar JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: 📱 Configurar Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: 🔧 Dar permissão ao gradlew
-        run: chmod +x gradlew
-
-      - name: 🏗️ Cache do Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: 🧪 Build de debug
-        run: ./gradlew assembleDebug --no-daemon
-
-      - name: 📦 Upload do APK (debug)
-        uses: actions/upload-artifact@v4
-        with:
-          name: ARWallCanvas-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 7
-
+      - uses: actions/checkout@v4
+      - name: Install xmllint
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libxml2-utils
+      - name: Run validation
+        run: |
+          FAIL=0
+          for xml in $(find app/src/main/res -name '*.xml' -type f); do
+            if ! xmllint --noout "$xml" 2>/dev/null; then
+              echo "INVALID XML: $xml"
+              FAIL=$((FAIL + 1))
+            fi
+          done
+          for pattern in 'color name=' 'string name=' 'dimen name=' 'style name='; do
+            found=$(grep -rhn "$pattern" app/src/main/res/values/*.xml 2>/dev/null | grep -oP "$pattern\"\K[^\"]+" | sort || true)
+            dupes=$(echo "$found" | uniq -d || true)
+            if [ -n "$dupes" ]; then
+              echo "DUPLICATE $pattern: $dupes"
+              FAIL=$((FAIL + 1))
+            fi
+          done
+          if [ "$FAIL" -gt 0 ]; then exit 1; fi
   lint:
-    name: 🔍 Lint
+    name: Lint
     runs-on: ubuntu-latest
-
     steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
-
-      - name: ☕ JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-
-      - name: 📱 Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: 🔧 Permissão
-        run: chmod +x gradlew
-
-      - name: 💾 Cache do Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: 🔍 Executar Lint
-        run: ./gradlew lint --no-daemon
-
-      - name: 📊 Upload relatório de lint
-        uses: actions/upload-artifact@v4
+      - uses: android-actions/setup-android@v3
+      - run: chmod +x gradlew
+      - uses: gradle/actions/setup-gradle@v3
+      - run: ./gradlew lint --no-daemon
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: lint-report
           path: app/build/reports/lint-results-*.html
+          retention-days: 7
+  build:
+    name: Build APK
+    needs: [validate, lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: chmod +x gradlew
+      - uses: gradle/actions/setup-gradle@v3
+      - run: ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ARWallCanvas-debug
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
           retention-days: 7
