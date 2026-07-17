@@ -49,20 +49,21 @@ for dir in "$ROOT/app/src/main/res/values" $(find "$ROOT/app/src/main/res" -maxd
 done
 if [ "$DUPS" -eq 0 ]; then echo "  PASS: No duplicate resources found"; fi
 
-# 3. Resource Reference Validation
+# 3. Resource Reference Validation (using temp file to avoid subshell counter bug)
 echo ""
 echo "[3/4] Checking resource references..."
-MISSING=0
+TEMP_FILE=$(mktemp /tmp/validate_missing.XXXXXX 2>/dev/null || echo "/tmp/validate_missing.txt")
+> "$TEMP_FILE"
 while IFS= read -r -d '' xmlfile; do
-    refs=$(grep -oP '@(color|string|dimen|drawable|mipmap)/\K[a-zA-Z0-9_]+' "$xmlfile" 2>/dev/null || true)
-    if [ -z "$refs" ]; then continue; fi
-    echo "$refs" | sort -u | while IFS= read -r ref; do
+    grep -oP '@(color|string|dimen|drawable|mipmap)/\K[a-zA-Z_][a-zA-Z0-9_]*' "$xmlfile" 2>/dev/null | sort -u | while IFS= read -r ref; do
         if ! grep -qr "name=\"$ref\"" "$ROOT/app/src/main/res/" 2>/dev/null; then
             echo "  MISSING REF: $ref referenced in $xmlfile but not defined anywhere"
-            MISSING=$((MISSING + 1))
+            echo "$ref" >> "$TEMP_FILE"
         fi
     done
 done < <(find "$ROOT" -name '*.xml' -path '*/res/*' ! -path '*/res/values/*' -type f -print0 2>/dev/null || true)
+MISSING=$(wc -l < "$TEMP_FILE" 2>/dev/null || echo 0)
+rm -f "$TEMP_FILE" 2>/dev/null || true
 if [ "$MISSING" -eq 0 ]; then echo "  PASS: All resource references resolve"; fi
 
 # Summary
